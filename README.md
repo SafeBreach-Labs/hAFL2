@@ -2,7 +2,10 @@
 [hAFL2](https://github.com/SafeBreach-Labs/hAFL2) is a [kAFL](https://github.com/IntelLabs/kAFL)-based hypervisor fuzzer.  
 It is the first open-source fuzzer which is able to target hypervisors natively (including Hyper-V), as it's support nested virtualization, code coverage and detailed crash monitoring.  
 
-
+---
+1. **The technical details of the project are described within the ```TechnicalDetails.md``` file.**
+2. **The setup instructions are described within the `tutorial.md` file.** 
+---
 ## Contact Me
 I will do my best in order to provide the best technical explanation regarding this project.  
 If you still have any questions or thoughts please **contact me on Twitter: [@peleghd](https://twitter.com/peleghd)**
@@ -23,6 +26,3 @@ This behavior can be easily modified (e.g. retreiving code coverage out of the h
 - The [kAFL](https://github.com/IntelLabs/kAFL) team (Sergej Schumilo, Cornelius Aschermann, Robert Gawlik, Sebastian Schinzel and Thorsten Holz) for providing a fuzzing infrastructure which I heavily modified in order to target hypervisors.
 - The [Nyx](https://www.usenix.org/conference/usenixsecurity21/presentation/schumilo) fuzzer team (Sergej Schumilo, Cornelius Aschermann, Ali Abbasi, Simon Wör­ner, and Thorsten Holz) for telling their own story of implementing a hypervisor fuzzer.
 ---
-
-1. **The technical details of the project are described within the ```TechnicalDetails.md``` file in this repository.**
-2. **Setup instructions are within the `tutorial.md` file.** 
