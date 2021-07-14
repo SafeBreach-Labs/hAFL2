@@ -27,13 +27,13 @@ It means that KVM must be aware of each one of the nested VMs which are running 
 It actually enables us to fully communicate with a nested VM by:  
 1. Handling its hypercalls before the L1 hypervisor handles it (for communicating with the nested VM's harness)  
 2. Read / Write from/to its memory directly (For transferring fuzzing payloads and crash details)  
-3. Specify a specific MSR directly to it (For enabling code coverage for a specific VM)  
+3. Specify a certain MSR directly to it (For enabling code coverage for a specific VM)  
 
 We'll get back to these 3 points in the next sections.
 
 
 ### Fuzzing Hypervisors (with hAFL2)
-In contrast to kAFL which is using only one level of virtualization (L1, a single VM which is being targeted), hAFL2 is using two levels of virtualization:  
+In contrast to kAFL which uses only one level of virtualization (L1, a single VM which is being targeted), hAFL2 is using two levels of virtualization:  
 1. L1 - The target hypervisor  
 2. L2 - The guest VM which runs within the target hypervisor and executes the harness part.  
 
