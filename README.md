@@ -3,8 +3,8 @@
 It is the first open-source fuzzer which is able to target hypervisors natively (including Hyper-V), as it's support nested virtualization, code coverage and detailed crash monitoring.  
 
 ---
-1. **The technical details of the project are described within the ```TechnicalDetails.md``` file.**
-2. **The setup instructions are described within the `tutorial.md` file.** 
+1. **The technical details of the project are described within the [```TechnicalDetails.md```](https://github.com/SafeBreach-Labs/hAFL2/blob/main/TechnicalDetails.md) file.**
+2. **The setup instructions are described within the [`tutorial.md`](https://github.com/SafeBreach-Labs/hAFL2/blob/main/tutorial.md) file.** 
 ---
 ## Contact Me
 I will do my best in order to provide the best technical explanation regarding this project.  
