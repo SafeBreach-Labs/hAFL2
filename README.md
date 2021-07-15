@@ -19,6 +19,25 @@ therefore, I worked in a PoC mode (a.k.a. quick and dirty.) If I had the time, I
 This behavior can be easily modified (e.g. retreiving code coverage out of the hypervisor itself on L1, etc.) and I explained exactly what needs to be done in order to make it work within the `TechnicalDetails.md` file.
 
 **You are more than welcome to improve the code of hAFL2 and open pull requests :)**
+
+## VMSwitch Harness Gaps
+Due to a lack of time, I have provided a **partial harness** for Hyper-V's VMSwitch which provide one the ability to send RNDIS packets from the guest partition to the root partition.  
+
+It's imporant to mention that **there is a major gap in the harness** - it won't provide you an accurate code coverage and I'll try to explain why.  
+
+The harness is responsible for the following:
+- Signal (`ACQUIRE`) hAFL2 to start collecting code coverage from the root partition.  
+- Send the fuzzing payload to VMSwitch within the root partition.  
+- Wait for a VMBus completion packet.  
+- Signal (`RELEASE`) hAFL2 to stop collecting code coverage. 
+
+The problem is that VMSwitch processes packets in an asynchronous manner which means that it will call the interesting parsing code (which we'd like to have within our code coverage) AFTER it already sent a completion packet to the child partition's harness, therefore, the code coverage will be partial.  
+
+[@OphirHarpaz](https://twitter.com/ophirharpaz) and I solved a similar problem within [hAFL1](https://github.com/SB-GC-Labs/hAFL1) by disabling Patch Guard and modifying some VMSwitch logic.  
+ I believe this can be solved in a similar manner, maybe by patching VMSwitch and modifying the call to [`VmbChannelPacketComplete`](https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/vmbuskernelmodeclientlibapi/nc-vmbuskernelmodeclientlibapi-fn_vmb_channel_packet_complete) to occur after VMSwitch has finished the processing part.  
+
+Check out the Harness driver of [hAFL1](https://github.com/SB-GC-Labs/hAFL1) in order to understand how we patched VMSwitch.  
+
 ## Credits
 - [Ophir Harpaz](https://twitter.com/ophirharpaz) for working together on the [hAFL1](https://github.com/SB-GC-Labs/hAFL1) project which inspired me to implement the hAFL2 project.
 - [Saar Amar](https://twitter.com/AmarSaar) for answering a lot of nVMX-related questions during the implementation of this project, which helped me completing this project on time.
