@@ -38,8 +38,9 @@ The problem is that VMSwitch processes packets in an asynchronous manner which m
 
 Check out the Harness driver of [hAFL1](https://github.com/SB-GC-Labs/hAFL1) in order to understand how we patched VMSwitch.  
 
-## Re-Compile KVM
-If you already installed the hAFL2 Linux kernel (with modified KVM) and you wish to modify some of KVM's code without re-compile the whole kernel, you may use `./compile-kvm.sh 5.12.7` in order to do so.
+## Re-Compile and Reload KVM
+If you already installed the hAFL2 Linux kernel (with modified KVM) and you wish to modify some of KVM's code without re-compile the whole kernel, you may use `./compile-kvm.sh 5.12.7` in order to do so.  
+The script will also reload the new compiled version of KVM and KVM-intel.
 ## Credits
 - [Ophir Harpaz](https://twitter.com/ophirharpaz) for working together on the [hAFL1](https://github.com/SB-GC-Labs/hAFL1) project which inspired me to implement the hAFL2 project.
 - [Saar Amar](https://twitter.com/AmarSaar) for answering a lot of nVMX-related questions during the implementation of this project, which helped me completing this project on time.

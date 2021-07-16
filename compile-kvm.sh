@@ -1,5 +1,6 @@
 if [ "$#" -ne 1 ]; then
     echo "Usage: ./compile.sh [LINUX_KERNEL_VERSION]"
+    exit 1
 fi
 
 version=$1
