@@ -145,7 +145,7 @@ class qemu:
 
         # Lauch either as VM snapshot or direct kernel/initrd boot
         if self.config.argument_values['vm_dir']:
-            self.cmd += " -drive file=" + self.config.argument_values['vm_dir'] + "/overlay_10" + ".qcow2"
+            self.cmd += " -drive file=" + self.config.argument_values['vm_dir'] + "/overlay_" + self.qemu_id + ".qcow2"
             self.cmd += " -loadvm " + self.config.argument_values["S"]
         elif self.config.argument_values['kernel']:
             self.cmd += " -kernel " + self.config.argument_values['kernel']
