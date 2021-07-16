@@ -110,7 +110,7 @@ class qemu:
             self.cmd += ",dump_pt_trace"
 
         if self.debug_mode:
-            self.cmd += ",debug_mode"
+            self.cmd += ",debug_mode=on"
 
         if not notifiers:
             self.cmd += ",crash_notifier=False"

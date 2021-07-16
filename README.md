@@ -33,7 +33,7 @@ The harness is responsible for the following:
 
 The problem is that VMSwitch processes packets in an asynchronous manner which means that it will call the interesting parsing code (which we'd like to have within our code coverage) AFTER it already sent a completion packet to the child partition's harness, therefore, the code coverage will be partial.  
 
-[@OphirHarpaz](https://twitter.com/ophirharpaz) and I solved a similar problem within [hAFL1](https://github.com/SB-GC-Labs/hAFL1) by disabling Patch Guard and modifying some VMSwitch logic.  
+[@OphirHarpaz](https://twitter.com/ophirharpaz) and I solved a similar problem within [hAFL1](https://github.com/SB-GC-Labs/hAFL1) by disabling PatchGuard and modifying some VMSwitch logic.  
  I believe this can be solved in a similar manner, maybe by patching VMSwitch and modifying the call to [`VmbChannelPacketComplete`](https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/vmbuskernelmodeclientlibapi/nc-vmbuskernelmodeclientlibapi-fn_vmb_channel_packet_complete) to occur after VMSwitch has finished the processing part.  
 
 Check out the Harness driver of [hAFL1](https://github.com/SB-GC-Labs/hAFL1) in order to understand how we patched VMSwitch.  
