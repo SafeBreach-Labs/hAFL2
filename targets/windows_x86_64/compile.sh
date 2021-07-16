@@ -6,9 +6,9 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	mkdir bin/info/ 2> /dev/null
 
 	if x86_64-w64-mingw32-gcc -v 2> /dev/null && x86_64-w64-mingw32-g++ -v 2> /dev/null; then
-		printf "\tCompiling loader...\n"
-		x86_64-w64-mingw32-g++ src/info/info.cpp -I ../ -o bin/info/info.exe -lntdll -lpsapi
 		printf "\tCompiling info executable...\n"
+		x86_64-w64-mingw32-g++ src/info/info.cpp -I ../ -o bin/info/info.exe -lntdll -lpsapi
+		printf "\tCompiling loader...\n"
 		x86_64-w64-mingw32-gcc src/loader/loader.c -I ../ -o bin/loader/loader.exe -Wall -lpsapi
 		printf "\tCompiling vuln_driver fuzzer...\n"
 		x86_64-w64-mingw32-gcc src/fuzzer/vuln_test.c -I ../ -o bin/fuzzer/vuln_test.exe

@@ -4315,7 +4315,6 @@ index 000000000..9c49fa05a
 +	if(hypercall_enabled){
 +		hypercall_snd_char(KAFL_PROTO_INFO);
 +	}
-+	qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_SIGNAL);
 +}
 +
 +void handle_hypercall_kafl_crash_dump_size(struct kvm_run *run, CPUState *cpu){
