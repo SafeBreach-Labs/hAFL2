@@ -85,7 +85,7 @@ The modification was added within the `vmx_vcpu_run` function in `arch/x86/kvm/v
 ```
 
 As mentioned before, this modification is working for Hyper-V's root partition, but you can easily modify it to support any other hypervisors, by using this condition instead of `is_root_partition`:
-```
+```C
     bool is_target_vm = vmx->nested.last_vpid == X;
 ```
 Just replace the last_vpid with the virtual processor id of your target VM (should be 0 for the targetg hypervisor itself, at least for Hyper-V.)
