@@ -69,6 +69,12 @@ int main(int argc, char** argv)
                 NULL,
                 NULL
             );
+
+            /* Harness will provide partial code coverage, read README.md, a temporary workaround is to add this loop but it's not a complete solution */
+            // volatile unsigned long long t;
+            // for (t = 0; t < 1000000000ull; ++t) {}    // 1000*1000*1000
+
+
             /* inform fuzzer about finished fuzzing iteration */
             kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
     }
