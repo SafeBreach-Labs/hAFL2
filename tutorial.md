@@ -126,7 +126,7 @@ bcdedit -set loadoptions DDISABLE_INTEGRITY_CHECKS
 2. Download / compile the following files (files in bold should be compiled in previous steps) to a dedicated folder on hAFL2 server:
     1. Devcon.exe ([Debugging Tools for Windows](https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/)) - this will install the harness driver.
     2. **CPHarness.sys, CPHarness.inf, CPHarness.cat, CPharness.cer** (`drivers/CPHarness` folder in hAFL2 Repo) - these files comprise the harness driver.
-    3. **CrashMonitoringDriver.sys, CrashMonitoringDriver.inf, CrashMonitoringDriver.cat, CrashMonitoringDriver.cer** (`drivers/CPHarness` folder in hAFL2 Repo) - these files comprise the root partition crash monitoring driver.)
+    3. **CrashMonitoringDriver.sys, CrashMonitoringDriver.inf, CrashMonitoringDriver.cat, CrashMonitoringDriver.cer** (`drivers/CrashMonitoringDriver` folder in hAFL2 Repo) - these files comprise the root partition crash monitoring driver.)
     4. l**oader.exe** `(./hAFL2/targets/windows_x86_64/bin/loader/loader.exe`).
     5. **info.exe** (`./hAFL2/targets/windows_x86_64/bin/info/info.exe`)
     6. OSRLoader.exe ([Download from here](https://www.osronline.com/OsrDown.cfm/osrloaderv30.zip))
