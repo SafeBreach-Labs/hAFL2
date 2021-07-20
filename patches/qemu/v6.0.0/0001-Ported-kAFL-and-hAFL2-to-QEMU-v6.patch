@@ -909,7 +909,6 @@ index 000000000..f7b1340b2
 +#include "pt/memory_access.h"
 +#include "pt/interface.h"
 +#include "pt/debug.h"
-+#include <libexplain/ioctl.h>
 +
 +#ifdef CONFIG_REDQUEEN
 +#include "pt/redqueen.h"
