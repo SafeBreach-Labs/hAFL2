@@ -10,8 +10,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 		x86_64-w64-mingw32-g++ src/info/info.cpp -I ../ -o bin/info/info.exe -lntdll -lpsapi
 		printf "\tCompiling loader...\n"
 		x86_64-w64-mingw32-gcc src/loader/loader.c -I ../ -o bin/loader/loader.exe -Wall -lpsapi
-		printf "\tCompiling vuln_driver fuzzer...\n"
-		x86_64-w64-mingw32-gcc src/fuzzer/vuln_test.c -I ../ -o bin/fuzzer/vuln_test.exe
+		printf "\tCompiling packet_sender fuzzer...\n"
+		x86_64-w64-mingw32-gcc src/fuzzer/packet_sender.c -I ../ -o bin/fuzzer/packet_sender.exe
         printf "\tCompiling hprintf test...\n"
         x86_64-w64-mingw32-gcc src/fuzzer/hprintf_test.c -I ../ -o bin/fuzzer/hprintf_test.exe -mwindows -Wall
 
