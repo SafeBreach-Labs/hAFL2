@@ -16,25 +16,20 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
 
 *Note: During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
 
-1. Deploy a Windows 10 (build`21354.1000`) VM
-    1. Obtain a Windows 10 [ISO file](https://techbench.luzea.ovh/download.html?id=2004) (21354.1000), we’ll be using Windows10_InsiderPreview_Client_x64_en-us_21354.iso.
-    2. Create a QEMU disk image:
+   1. [Obtain a Windows 10 Insider ISO file](https://www.microsoft.com/en-us/software-download/windowsinsiderpreviewiso) (21354.1000), we'll be using Windows10_InsiderPreview_Client_x64_en-us_21354.iso (Select `"Windows 10 Insider Preview (Dev Channel) - Build 21354" Edition`).  
+   2. Create a QEMU disk image:
     `./hAFL2/qemu-6.0.0/build/qemu-img create -f qcow2 windows.qcow2 100G`
-    3. Run the machine and install Windows:
+   3. Run the machine and install Windows:
     `./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m 16384 -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -cdrom ./Windows10_InsiderPreview_Client_x64-en-us_21354.iso -net none -usbdevice tablet`
-    4. Install Windows 10 Pro, which has Hyper-V capabilities.
-    5. Consider do the following:
-        1. Disable Windows Defender permanently.
-    6. Disable Fast Startup from within an elevated command prompt:
-
-    ```c
-    REG ADD "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" /V HiberbootEnabled /T REG_DWORD /D 1 /F
-    ```
-
-    1. Enable Hyper-V on the VM by running the following within a PowerShell console as Administrator: 
-    `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All`
-        1. Enter 'Y' on console and restart the VM (as I mentioned, you might need to use Ctrl-C and re-execute QEMU as it might hang.)
-    2. Make sure the VM was booted properly and shut it down properly (`shutdown -t 0 -s`), this is important as we'll need to mount the HDD of it in a second, and if you won't turn it off properly it won't mount.
+   4. Install Windows 10 Pro, which has Hyper-V capabilities.
+   5. Consider do the following:
+       - [Disable Windows Defender permanently using local group policy](https://www.windowscentral.com/how-permanently-disable-windows-defender-antivirus-windows-10).
+       - Disable Fast Startup from within an elevated command prompt:  
+        `REG ADD "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" /V HiberbootEnabled /T REG_DWORD /D 1 /F`
+   6. Enable Hyper-V on the VM by running the following within a PowerShell console as Administrator:  
+    `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All`  
+       - Enter 'Y' on console and restart the VM (as I mentioned, you might need to use Ctrl-C and re-execute QEMU as it might hang.)
+   7. Make sure the VM was booted properly and shut it down properly (`shutdown -t 0 -s`), this is important as we'll need to mount the HDD of it in a second, and if you won't turn it off properly it won't mount.
 
 ## Creating a Child Partition VM
 

@@ -17,6 +17,7 @@ In this section I'll explain the modifications / parts I've added to the kAFL pr
 		- [R/W of Nested VM Memory](#rw-of-nested-vm-memory)
 	- [Porting to QEMU 6](#porting-to-qemu-6)
 	- [Wrap Up](#wrap-up)
+---
 ## Nested Virtualization
 *As kAFL is using the KVM Hypervisor with Intel PT, this paper will only refer the nested virtualization architecture of Intel processors and KVM terminology as well.*
 
