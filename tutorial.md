@@ -17,6 +17,7 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
 *Note: During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
 
    1. [Obtain a Windows 10 Insider ISO file](https://www.microsoft.com/en-us/software-download/windowsinsiderpreviewiso) (21354.1000), we'll be using Windows10_InsiderPreview_Client_x64_en-us_21354.iso (Select `"Windows 10 Insider Preview (Dev Channel) - Build 21354" Edition`).  
+      - You may need to register to Windows Insider Program.
    2. Create a QEMU disk image:
     `./hAFL2/qemu-6.0.0/build/qemu-img create -f qcow2 windows.qcow2 100G`
    3. Run the machine and install Windows:
