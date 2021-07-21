@@ -8,10 +8,6 @@ It is the first open-source fuzzer which is able to target hypervisors natively 
 1. **The technical details of the project are described within the [```TechnicalDetails.md```](https://github.com/SafeBreach-Labs/hAFL2/blob/main/TechnicalDetails.md) file.**
 2. **The setup instructions are described within the [`tutorial.md`](https://github.com/SafeBreach-Labs/hAFL2/blob/main/tutorial.md) file.** 
 ---
-## Contact Me
-I will do my best in order to provide the best technical explanation regarding this project.  
-If you still have any questions or thoughts please **contact me on Twitter: [@peleghd](https://twitter.com/peleghd)**
-
 ## Disclaimer
 
 1. **I only had 3 weeks in order to implement this project from 0** as I worked at the same time on the [hAFL1](https://github.com/SB-GC-Labs/hAFL1) project & [Black Hat USA 2021 talk](https://www.blackhat.com/us-21/briefings/schedule/#hafl-our-journey-of-fuzzing-hyper-v-and-discovering-a--day-23498),
@@ -19,8 +15,6 @@ therefore, I worked in a PoC mode (a.k.a. quick and dirty.) If I had the time, I
 
 1. I personally used it in order to target the Hyper-V networking VSP (VMSwitch), which means that I retreived code coverage out of the root partition VM (L2), and sent fuzzing inputs directly to the child partition VM (L2) where my harness was executed.  
 This behavior can be easily modified (e.g. retreiving code coverage out of the hypervisor itself on L1, etc.) and I explained exactly what needs to be done in order to make it work within the `TechnicalDetails.md` file.
-
-**You are more than welcome to improve the code of hAFL2 and open pull requests :)**
 
 ## VMSwitch Harness Gaps
 Due to a lack of time, I have provided a **partial harness** for Hyper-V's VMSwitch which provide one the ability to send RNDIS packets from the guest partition to the root partition.  
