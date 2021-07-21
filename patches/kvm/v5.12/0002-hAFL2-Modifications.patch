@@ -1,0 +1,602 @@
+From ebb70cbbbf9665b62af6a267df110f06019d0dc6 Mon Sep 17 00:00:00 2001
+From: Peleg Hadar <peleg.hadar.w@gmail.com>
+Date: Wed, 21 Jul 2021 12:19:10 +0200
+Subject: [PATCH] hAFL2 Modifications
+
+---
+ arch/x86/kvm/vmx/nested.c | 69 +++++++++++++++++++++++++++-
+ arch/x86/kvm/vmx/vmx.c    | 63 +++++++++++++++++++++++---
+ arch/x86/kvm/vmx/vmx.h    |  1 +
+ arch/x86/kvm/vmx/vmx_pt.c | 95 +++++++++++++++++++++++----------------
+ arch/x86/kvm/vmx/vmx_pt.h |  3 ++
+ arch/x86/kvm/x86.c        | 86 +++++++++++++++++++++++++++++++++++
+ arch/x86/kvm/x86.h        | 16 +++++++
+ include/uapi/linux/kvm.h  |  3 ++
+ 8 files changed, 289 insertions(+), 47 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx/nested.c b/arch/x86/kvm/vmx/nested.c
+index 4ba2a43e1..aeb0e1cc3 100644
+--- a/arch/x86/kvm/vmx/nested.c
++++ b/arch/x86/kvm/vmx/nested.c
+@@ -14,6 +14,45 @@
+ #include "trace.h"
+ #include "vmx.h"
+ #include "x86.h"
++#include "vmx/vmx_pt.h"
++
++struct vcpu_vmx_pt {
++	/* hacky vcpu reverse reference */
++	struct vcpu_vmx *vmx;
++
++	/* configuration */
++	u64 ia32_rtit_ctrl_msr;
++
++	/* IP-Filtering */
++	bool ia32_rtit_addr_configured[4][2];
++	u64 ia32_rtit_addr_0[2];
++	u64 ia32_rtit_addr_1[2];
++	u64 ia32_rtit_addr_2[2];
++	u64 ia32_rtit_addr_3[2];
++
++	/* CR3-Filtering */
++	u64 ia32_rtit_cr3_match;
++
++	/* ToPA */
++	u64 topa_pt_region;
++	u64 ia32_rtit_output_base;
++	u64 ia32_rtit_output_mask_ptrs;
++
++	u64 ia32_rtit_output_base_init;
++	u64 ia32_rtit_output_mask_ptrs_init;
++
++
++	void* topa_main_buf_virt_addr;
++	void* topa_fallback_buf_virt_addr;
++	void* topa_virt_addr;
++
++	bool configured;
++	uint8_t cpu;
++	bool reset;
++	
++	bool should_enable;
++	bool should_disable;
++};
+ 
+ static bool __read_mostly enable_shadow_vmcs = 1;
+ module_param_named(enable_shadow_vmcs, enable_shadow_vmcs, bool, S_IRUGO);
+@@ -2327,6 +2366,7 @@ static void prepare_vmcs02_early(struct vcpu_vmx *vmx, struct vmcs12 *vmcs12)
+ 		if (guest_efer != host_efer)
+ 			exec_control |= VM_ENTRY_LOAD_IA32_EFER;
+ 	}
++	exec_control |= VM_ENTRY_PT_CONCEAL_PIP;
+ 	vm_entry_controls_set(vmx, exec_control);
+ 
+ 	/*
+@@ -3365,6 +3405,15 @@ enum nvmx_vmentry_status nested_vmx_enter_non_root_mode(struct kvm_vcpu *vcpu,
+ 		goto vmentry_fail_vmexit_guest_mode;
+ 	}
+ 
++	if (from_vmentry) {
++	if (cpuid_ebx(HYPERV_CPUID_FEATURES) & HV_CPU_MANAGEMENT) {
++		if (vmx->vmx_pt_config->should_enable) {
++			vmx_pt_enable(vmx->vmx_pt_config, true);
++		}
++		vmx_pt_vmentry(vmx->vmx_pt_config);
++		}
++	}
++
+ 	if (from_vmentry) {
+ 		failed_index = nested_vmx_load_msr(vcpu,
+ 						   vmcs12->vm_entry_msr_load_addr,
+@@ -4798,10 +4847,12 @@ static int enter_vmx_operation(struct kvm_vcpu *vcpu)
+ 	vmx->nested.vmcs02_initialized = false;
+ 	vmx->nested.vmxon = true;
+ 
++	/*
+ 	if (vmx_pt_mode_is_host_guest()) {
+ 		vmx->pt_desc.guest.ctl = 0;
+ 		pt_update_intercept_for_msr(vcpu);
+ 	}
++	*/
+ 
+ 	return 0;
+ 
+@@ -5946,10 +5997,26 @@ bool nested_vmx_reflect_vmexit(struct kvm_vcpu *vcpu)
+ {
+ 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+ 	union vmx_exit_reason exit_reason = vmx->exit_reason;
+-	unsigned long exit_qual;
++	unsigned long exit_qual, nr, a0, a1;
+ 	u32 exit_intr_info;
+ 
+ 	WARN_ON_ONCE(vmx->nested.nested_run_pending);
++	// Handle kAFL-Specific Hypercall in L0, don't reflect to L1.
++	if (exit_reason.basic == EXIT_REASON_VMCALL) {
++		nr = kvm_rax_read(vcpu);
++		if (nr == HYPERCALL_KAFL_RAX_ID) {
++			a0 = kvm_rbx_read(vcpu);
++			a1 = kvm_rcx_read(vcpu);
++			printk(KERN_INFO "[HYPERCALL_KAFL_RAX_ID] a0: 0x%lx, a1: 0x%lx, last_vpid: 0x%x\n",
++				a0, a1, vmx->nested.last_vpid);
++			return false;
++		}
++	}
++
++	// Handle EXIT_REASON_TOPA_FULL on L0, don't reflect it.
++	if (exit_reason.basic == EXIT_REASON_TOPA_FULL) {
++		return false;
++	}
+ 
+ 	/*
+ 	 * Late nested VM-Fail shares the same flow as nested VM-Exit since KVM
+diff --git a/arch/x86/kvm/vmx/vmx.c b/arch/x86/kvm/vmx/vmx.c
+index e538c4c13..0d9e7f8fb 100644
+--- a/arch/x86/kvm/vmx/vmx.c
++++ b/arch/x86/kvm/vmx/vmx.c
+@@ -66,6 +66,43 @@
+ 
+ #ifdef CONFIG_KVM_VMX_PT
+ #include "vmx_pt.h"
++struct vcpu_vmx_pt {
++	/* hacky vcpu reverse reference */
++	struct vcpu_vmx *vmx;
++
++	/* configuration */
++	u64 ia32_rtit_ctrl_msr;
++
++	/* IP-Filtering */
++	bool ia32_rtit_addr_configured[4][2];
++	u64 ia32_rtit_addr_0[2];
++	u64 ia32_rtit_addr_1[2];
++	u64 ia32_rtit_addr_2[2];
++	u64 ia32_rtit_addr_3[2];
++
++	/* CR3-Filtering */
++	u64 ia32_rtit_cr3_match;
++
++	/* ToPA */
++	u64 topa_pt_region;
++	u64 ia32_rtit_output_base;
++	u64 ia32_rtit_output_mask_ptrs;
++
++	u64 ia32_rtit_output_base_init;
++	u64 ia32_rtit_output_mask_ptrs_init;
++
++
++	void* topa_main_buf_virt_addr;
++	void* topa_fallback_buf_virt_addr;
++	void* topa_virt_addr;
++
++	bool configured;
++	uint8_t cpu;
++	bool reset;
++	
++	bool should_enable;
++	bool should_disable;
++};
+ #endif
+ 
+ MODULE_AUTHOR("Qumranet");
+@@ -6479,7 +6516,12 @@ static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
+ 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+ 
+ #ifdef CONFIG_KVM_VMX_PT
+-	bool topa_full = vmx_pt_vmexit(vmx->vmx_pt_config);
++	bool topa_full = false;
++	bool is_root_partition = cpuid_ebx(HYPERV_CPUID_FEATURES) & HV_CPU_MANAGEMENT;
++	if (is_root_partition) {
++		topa_full = vmx_pt_vmexit(vmx->vmx_pt_config);
++		vmx_pt_disable(vmx->vmx_pt_config, true);
++	}
+ #endif
+ 
+ 	if (vmx->exit_reason.basic == EXIT_REASON_EXTERNAL_INTERRUPT)
+@@ -6489,8 +6531,8 @@ static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
+ 
+ #ifdef CONFIG_KVM_VMX_PT
+ 	// VMX-PT: Check TOPA status and maybe override exit_reason for user exit
+-	if (topa_full) {
+-		vmx->exit_reason.full = EXIT_REASON_TOPA_FULL;
++	if (is_root_partition && topa_full) {
++		vmx->exit_reason.basic = EXIT_REASON_TOPA_FULL;
+ 	}
+ #endif
+ 
+@@ -6755,6 +6797,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
+ {
+ 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+ 	unsigned long cr3, cr4;
++	bool is_root_partition = cpuid_ebx(HYPERV_CPUID_FEATURES) & HV_CPU_MANAGEMENT;
+ 
+ 	/* Record the guest's net vcpu time for enforced NMI injections. */
+ 	if (unlikely(!enable_vnmi &&
+@@ -6768,10 +6811,6 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
+ 
+ 	trace_kvm_entry(vcpu);
+ 
+-#ifdef CONFIG_KVM_VMX_PT
+-	vmx_pt_vmentry(vmx->vmx_pt_config);
+-#endif
+-
+ 	if (vmx->ple_window_dirty) {
+ 		vmx->ple_window_dirty = false;
+ 		vmcs_write32(PLE_WINDOW, vmx->ple_window);
+@@ -6830,6 +6869,15 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
+ 	 */
+ 	x86_spec_ctrl_set_guest(vmx->spec_ctrl, 0);
+ 
++#ifdef CONFIG_KVM_VMX_PT
++	if (is_root_partition) {
++		if (vmx->vmx_pt_config->should_enable) {
++			vmx_pt_enable(vmx->vmx_pt_config, true);
++		}
++		vmx_pt_vmentry(vmx->vmx_pt_config);
++	}
++#endif
++
+ 	/* The actual VMENTER/EXIT is in the .noinstr.text section. */
+ 	vmx_vcpu_enter_exit(vcpu, vmx);
+ 
+@@ -7061,6 +7109,7 @@ static int vmx_create_vcpu(struct kvm_vcpu *vcpu)
+ 		printk(KERN_ERR "[VMX-PT] Error in vmx_pt_setup(). Exit.\n");
+ 		goto free_vmcs;
+ 	}
++	memset(&vmx->payload, 0, sizeof(vmx->payload));
+ #endif
+ 
+ 	return 0;
+diff --git a/arch/x86/kvm/vmx/vmx.h b/arch/x86/kvm/vmx/vmx.h
+index 2efb1e840..9d03128eb 100644
+--- a/arch/x86/kvm/vmx/vmx.h
++++ b/arch/x86/kvm/vmx/vmx.h
+@@ -340,6 +340,7 @@ struct vcpu_vmx {
+ 		DECLARE_BITMAP(read, MAX_POSSIBLE_PASSTHROUGH_MSRS);
+ 		DECLARE_BITMAP(write, MAX_POSSIBLE_PASSTHROUGH_MSRS);
+ 	} shadow_msr_intercept;
++	struct vmx_pt_payload payload;
+ };
+ 
+ enum ept_pointers_status {
+diff --git a/arch/x86/kvm/vmx/vmx_pt.c b/arch/x86/kvm/vmx/vmx_pt.c
+index f750d452c..b36a9b9b8 100644
+--- a/arch/x86/kvm/vmx/vmx_pt.c
++++ b/arch/x86/kvm/vmx/vmx_pt.c
+@@ -65,6 +65,7 @@
+ 
+ #define DEBUG
+ 
++bool reset_topa = false;
+ 
+ struct vcpu_vmx_pt {
+ 	/* hacky vcpu reverse reference */
+@@ -99,6 +100,8 @@ struct vcpu_vmx_pt {
+ 	bool configured;
+ 	uint8_t cpu;
+ 	bool reset;
++	bool should_enable;
++	bool should_disable;
+ };
+ 
+ struct hypercall_hook_object
+@@ -112,8 +115,8 @@ u8 enabled;
+ #ifdef DEBUG
+ static inline void vmx_pt_dump_trace_data(struct vcpu_vmx_pt *vmx_pt);
+ #endif
+-void vmx_pt_enable(struct vcpu_vmx_pt *vmx_pt_config);
+-void vmx_pt_disable(struct vcpu_vmx_pt *vmx_pt_config);
++void vmx_pt_enable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_enable);
++void vmx_pt_disable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_disable);
+ 
+ 
+ /*===========================================================================*
+@@ -265,13 +268,11 @@ static long vmx_pt_ioctl(struct file *filp, unsigned int ioctl, unsigned long ar
+ 			}
+ 			break;
+ 		case KVM_VMX_PT_ENABLE_ADDR0:
+-			if((!is_configured) && vmx_pt_config->ia32_rtit_addr_configured[0][0] && vmx_pt_config->ia32_rtit_addr_configured[0][1]){
+ #ifdef DEBUG
+-				printk("Intel PT ADDR0 enabled...");
++			printk("Intel PT ADDR0 enabled...");
+ #endif
+-				vmx_pt_config->ia32_rtit_ctrl_msr |= ADDR0_EN;
+-				r = 0;
+-			}
++			vmx_pt_config->ia32_rtit_ctrl_msr |= ADDR0_EN;
++			r = 0;
+ 			break;
+ 		case KVM_VMX_PT_ENABLE_ADDR1:
+ 			if((!is_configured) && vmx_pt_config->ia32_rtit_addr_configured[1][0] && vmx_pt_config->ia32_rtit_addr_configured[1][1]){
+@@ -292,10 +293,8 @@ static long vmx_pt_ioctl(struct file *filp, unsigned int ioctl, unsigned long ar
+ 			}
+ 			break;
+ 		case KVM_VMX_PT_DISABLE_ADDR0:
+-			if((!is_configured) && (vmx_pt_config->ia32_rtit_ctrl_msr & ADDR0_EN)){
+-				vmx_pt_config->ia32_rtit_ctrl_msr ^= ADDR0_EN;
+-				r = 0;
+-			}
++			vmx_pt_config->ia32_rtit_ctrl_msr ^= ADDR0_EN;
++			r = 0;
+ 			break;
+ 		case KVM_VMX_PT_DISABLE_ADDR1:
+ 			if((!is_configured) && (vmx_pt_config->ia32_rtit_ctrl_msr & ADDR1_EN)){
+@@ -339,30 +338,28 @@ static long vmx_pt_ioctl(struct file *filp, unsigned int ioctl, unsigned long ar
+ 			}
+ 			break;
+ 		case KVM_VMX_PT_ENABLE:
+-			if(!is_configured) {
+-				PRINT_INFO("Intel PT enabled...\n");
+-				vmx_pt_enable(vmx_pt_config);
+-			}
++			//PRINT_INFO("Intel PT enabled...\n");
++			vmx_pt_enable(vmx_pt_config, false);
+ 			r = 0;
+ 			break;
+ 		case KVM_VMX_PT_DISABLE:
+-			if(is_configured) {
+-				PRINT_INFO("Intel PT disabled...\n");
+-				r = vmx_pt_get_data_size(vmx_pt_config);
+-				vmx_pt_disable(vmx_pt_config);
+-				vmx_pt_config->reset = true;
+-			}
+-			else{
+-				r = -EINVAL;
+-			}
++			//PRINT_INFO("Intel PT disabled...");
++			r = vmx_pt_get_data_size(vmx_pt_config);
++			vmx_pt_disable(vmx_pt_config, false);
++			vmx_pt_config->reset = true;
+ 			break;
+ 		case KVM_VMX_PT_CHECK_TOPA_OVERFLOW:
+-			r = vmx_pt_check_overflow(vmx_pt_config);
+-			if(r){
+-				vmx_pt_config->reset = true;
++			if (cpuid_ebx(HYPERV_CPUID_FEATURES) & HV_CPU_MANAGEMENT) {
++				r = vmx_pt_check_overflow(vmx_pt_config);
++				if(r) {
++					vmx_pt_config->reset = true;
+ #ifdef DEBUG
+-				printk("KVM_VMX_PT_CHECK_TOPA_OVERFLOW %ld\n", r);
++					printk("KVM_VMX_PT_CHECK_TOPA_OVERFLOW %ld\n", r);
+ #endif
++				}
++			}
++			else {
++				r = 0;
+ 			}
+ 			break;
+ 		case KVM_VMX_PT_GET_TOPA_SIZE:
+@@ -617,22 +614,41 @@ static inline void vmx_pt_setup_vmx_autoload_msr(struct vcpu_vmx_pt *vmx_pt_conf
+ 	add_atomic_switch_msr(vmx_pt_config->vmx, MSR_IA32_RTIT_CTL, guest_val, host_val, false);
+ }
+ 
+-void vmx_pt_enable(struct vcpu_vmx_pt *vmx_pt_config){
++
++void vmx_pt_enable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_enable){
+ 	if (!vmx_pt_config->configured){
+-		printk("VMX_PT_ENABLE Calling autoload msr...\n");
+ 		vmx_pt_config->configured = true;
+-		vmx_pt_setup_vmx_autoload_msr(vmx_pt_config, true);
++		if (actual_enable) {				
++			vmx_pt_setup_vmx_autoload_msr(vmx_pt_config, true);
++		}
++		else {
++			vmx_pt_config->should_enable = true;
++			vmx_pt_config->configured = false;
++		}
+ 	}
+ }
+ 
+-void vmx_pt_disable(struct vcpu_vmx_pt *vmx_pt_config){
++void vmx_pt_disable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_disable){
++	// Ignore vmx_pt_config->configured, signal should_enable=false anyway.
++	if (!actual_disable) {
++		vmx_pt_config->should_enable = false;
++		reset_topa = true;
++		printk("Signaled to disable Intel PT, signaling to reset ToPA...\n");
++	}
++
+ 	if (vmx_pt_config->configured){
+-		vmx_pt_config->configured = false;
+-		vmx_pt_setup_vmx_autoload_msr(vmx_pt_config, false);
+-		wmb();
+-		//vmx_pt_config->ia32_rtit_output_mask_ptrs = 0x7fLL;
+-		//wrmsrl(MSR_IA32_RTIT_OUTPUT_MASK, vmx_pt_config->ia32_rtit_output_mask_ptrs);
+-		topa_reset(vmx_pt_config);
++ 		vmx_pt_config->configured = false;
++		
++		if (actual_disable) {
++			vmx_pt_setup_vmx_autoload_msr(vmx_pt_config, false);
++			wmb();
++			vmx_pt_config->should_disable = false;
++			if (reset_topa) {
++				printk("Resetting ToPA...");
++				topa_reset(vmx_pt_config);
++				reset_topa = false;
++			}
++		}
+ 	}
+ }
+ 
+@@ -643,7 +659,8 @@ int vmx_pt_setup(struct vcpu_vmx *vmx, struct vcpu_vmx_pt **vmx_pt_config){
+ 		*vmx_pt_config = kmalloc(sizeof(struct vcpu_vmx_pt), GFP_KERNEL);
+ 		(*vmx_pt_config)->vmx = vmx;
+ 		(*vmx_pt_config)->configured = false;
+-
++		(*vmx_pt_config)->should_enable = false;
++		(*vmx_pt_config)->should_disable = false;
+ 		vmx_pt_setup_msrs(*vmx_pt_config);
+ 		ret_val = vmx_pt_setup_topa(*vmx_pt_config);
+ 		if (ret_val)
+diff --git a/arch/x86/kvm/vmx/vmx_pt.h b/arch/x86/kvm/vmx/vmx_pt.h
+index 1d8abd69c..3cc427721 100644
+--- a/arch/x86/kvm/vmx/vmx_pt.h
++++ b/arch/x86/kvm/vmx/vmx_pt.h
+@@ -30,4 +30,7 @@ void vmx_pt_exit(void);
+ 
+ int vmx_pt_enabled(void);
+ 
++void vmx_pt_enable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_enable);
++void vmx_pt_disable(struct vcpu_vmx_pt *vmx_pt_config, bool actual_disable);
++
+ #endif
+\ No newline at end of file
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index bfb5c9a08..383d839aa 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -5090,6 +5090,69 @@ case KVM_VMX_PT_SETUP_FD: {
+ 		r = kvm_x86_ops.setup_trace_fd(vcpu);
+ 		break;
+ 	}
++case KVM_VMX_PT_WRITE_TO_GUEST: {
++    struct vmx_pt_payload payload = {0};
++    void *buf_to_guest = NULL;
++    r = 0;
++    r = -EINVAL;
++    if (copy_from_user(&payload, argp, sizeof(payload))) {
++        printk("Failed copying payload struct from user...\n");
++        goto write_to_guest_out;
++    }
++    printk("KVM_VMX_PT_WRITE_TO_GUEST, 0x%llx, 0x%llx, 0x%x, 0x%x\n",
++        payload.guest_addr, payload.host_addr, payload.size, payload.access);
++    
++    r = -EFAULT;
++    buf_to_guest = vmalloc_user(payload.size);
++    if (NULL == buf_to_guest) {
++        printk("kzalloc failed!\n");
++        goto write_to_guest_out;
++    }
++    r = -EINVAL;
++    if (copy_from_user(buf_to_guest, (void*)payload.host_addr, payload.size)) {
++        printk("Failed copying payload data from user...\n");
++        goto write_to_guest_out;
++    }
++    printk("Writing to guest addr: 0x%llx, access: 0x%x\n", payload.guest_addr, payload.access);
++    kvm_write_guest_virt_system_with_access(vcpu, (gva_t)payload.guest_addr, buf_to_guest, payload.size, payload.access, NULL);
++write_to_guest_out:
++    if (buf_to_guest) {
++        kvfree(buf_to_guest);
++    }
++    break;
++}
++case KVM_VMX_PT_READ_FROM_GUEST: {
++    struct vmx_pt_payload payload = {0};
++    void *buf_from_guest = NULL;
++    r = 0;
++    r = -EINVAL;
++    if (copy_from_user(&payload, argp, sizeof(payload))) {
++        goto read_from_guest_out;
++    }
++    
++    printk("Read from guest: addr: 0x%llx, access: 0x%x ", payload.guest_addr, payload.access);
++    r = -EFAULT;
++    buf_from_guest = kzalloc(payload.size, GFP_KERNEL);
++    if (NULL == buf_from_guest) {
++        printk("Buf from guest allocation failed!");
++        goto read_from_guest_out;
++    }
++    memset(buf_from_guest, 0, payload.size);
++    r = -EINVAL;
++    r = kvm_read_guest_virt_system(vcpu, (gva_t)payload.guest_addr, buf_from_guest,
++                                    payload.size, payload.access, (struct x86_exception*)0);
++    printk("r: 0x%x\n", r);
++    if (copy_to_user((void*)payload.host_addr, buf_from_guest, payload.size)) {
++        printk("Copy to user (guest from buf) failed!");
++        goto read_from_guest_out;
++    }
++    
++read_from_guest_out:
++    if (buf_from_guest) {
++        kvfree(buf_from_guest);
++    }
++    break;
++}
+ #endif
+ 	default:
+ 		r = -EINVAL;
+@@ -6200,6 +6263,18 @@ static int emulator_write_std(struct x86_emulate_ctxt *ctxt, gva_t addr, void *v
+ 					   access, exception);
+ }
+ 
++int kvm_write_guest_virt_system_with_access(struct kvm_vcpu *vcpu, gva_t addr, void *val,
++				unsigned int bytes, u32 access, struct x86_exception *exception)
++{
++	/* kvm_write_guest_virt_system can pull in tons of pages. */
++	vcpu->arch.l1tf_flush_l1d = true;
++	access |= PFERR_WRITE_MASK;
++
++	return kvm_write_guest_virt_helper(addr, val, bytes, vcpu,
++					   access, exception);
++}
++EXPORT_SYMBOL_GPL(kvm_write_guest_virt_system_with_access);
++
+ int kvm_write_guest_virt_system(struct kvm_vcpu *vcpu, gva_t addr, void *val,
+ 				unsigned int bytes, struct x86_exception *exception)
+ {
+@@ -6211,6 +6286,17 @@ int kvm_write_guest_virt_system(struct kvm_vcpu *vcpu, gva_t addr, void *val,
+ }
+ EXPORT_SYMBOL_GPL(kvm_write_guest_virt_system);
+ 
++int kvm_read_guest_virt_system(struct kvm_vcpu *vcpu, gva_t addr, void *val,
++                               unsigned int bytes, u32 access, struct x86_exception *exception)
++{
++	/* kvm_write_read_virt_system can pull in tons of pages. */
++	vcpu->arch.l1tf_flush_l1d = true;
++
++	return kvm_read_guest_virt_helper(addr, val, bytes, vcpu,
++						access, exception);
++}
++EXPORT_SYMBOL_GPL(kvm_read_guest_virt_system);
++
+ int handle_ud(struct kvm_vcpu *vcpu)
+ {
+ 	static const char kvm_emulate_prefix[] = { __KVM_EMULATE_PREFIX };
+diff --git a/arch/x86/kvm/x86.h b/arch/x86/kvm/x86.h
+index 9035e34aa..abed79b51 100644
+--- a/arch/x86/kvm/x86.h
++++ b/arch/x86/kvm/x86.h
+@@ -16,6 +16,15 @@
+ #define KVM_SVM_DEFAULT_PLE_WINDOW_MAX	USHRT_MAX
+ #define KVM_SVM_DEFAULT_PLE_WINDOW	3000
+ 
++#ifdef CONFIG_KVM_VMX_PT
++struct vmx_pt_payload {
++	uint32_t size;
++	uint64_t host_addr;
++	uint64_t guest_addr;
++	uint32_t access;
++};
++#endif
++
+ static inline unsigned int __grow_ple_window(unsigned int val,
+ 		unsigned int base, unsigned int modifier, unsigned int max)
+ {
+@@ -260,6 +269,13 @@ int kvm_write_guest_virt_system(struct kvm_vcpu *vcpu,
+ 	gva_t addr, void *val, unsigned int bytes,
+ 	struct x86_exception *exception);
+ 
++int kvm_write_guest_virt_system_with_access(struct kvm_vcpu *vcpu,
++	gva_t addr, void *val, unsigned int bytes,
++	u32 access, struct x86_exception *exception);
++	
++int kvm_read_guest_virt_system(struct kvm_vcpu *vcpu, gva_t addr, void *val,
++    unsigned int bytes, u32 access, struct x86_exception *exception);
++	
+ int handle_ud(struct kvm_vcpu *vcpu);
+ 
+ void kvm_deliver_exception_payload(struct kvm_vcpu *vcpu);
+diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
+index 48174f4b3..4734dc5eb 100644
+--- a/include/uapi/linux/kvm.h
++++ b/include/uapi/linux/kvm.h
+@@ -1915,4 +1915,7 @@ struct kvm_dirty_gfn {
+ 
+ #define KVM_VMX_PT_SUPPORTED			_IO(KVMIO,	0xe4)
+ 
++#define KVM_VMX_PT_WRITE_TO_GUEST       _IOW(KVMIO, 0xe6, __u64)    /* write to guest memory (for nested VMs) */
++#define KVM_VMX_PT_READ_FROM_GUEST      _IOW(KVMIO, 0xe7, __u64)    /* read from guest memory (for nested VMs) */
++
+ #endif /* __LINUX_KVM_H */
+-- 
+2.25.1
+
