@@ -1,0 +1,24 @@
+From 06a3fd25cbe5533be6c9a16562884ff2f0b36d6b Mon Sep 17 00:00:00 2001
+From: Peleg Hadar <peleg.hadar.w@gmail.com>
+Date: Sun, 25 Jul 2021 18:16:54 +0200
+Subject: [PATCH] Removed libexplain/ioctl.h
+
+---
+ pt.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/pt.c b/pt.c
+index f7b1340b2..07e9bfa99 100644
+--- a/pt.c
++++ b/pt.c
+@@ -25,7 +25,6 @@
+ #include "pt/memory_access.h"
+ #include "pt/interface.h"
+ #include "pt/debug.h"
+-#include <libexplain/ioctl.h>
+ 
+ #ifdef CONFIG_REDQUEEN
+ #include "pt/redqueen.h"
+-- 
+2.25.1
+
