@@ -1,64 +1,64 @@
-From 4e8c95084899d83b1982b58d14779b13fd824ecb Mon Sep 17 00:00:00 2001
+From 27adef920887a63fd8c509d25f5e0fbcb6f67a8d Mon Sep 17 00:00:00 2001
 From: Peleg Hadar <peleg.hadar.w@gmail.com>
 Date: Tue, 6 Jul 2021 14:34:55 +0200
-Subject: [PATCH] Ported kAFL & hAFL2 to QEMU 6
+Subject: [PATCH 1/2] Ported kAFL & hAFL2 to QEMU 6
 
 ---
- accel/kvm/kvm-all.c        | 129 +++++
- configure                  |  13 +-
- hmp-commands-pt.hx         |  76 +++
- hmp-commands.hx            |  11 +
- include/hw/core/cpu.h      |  42 ++
- include/monitor/hmp.h      |  11 +-
- include/qemu/log.h         |   1 +
- linux-headers/linux/kvm.h  |  69 +++
- meson.build                |  20 +-
- monitor/hmp-cmds.c         | 183 +++++++
- monitor/misc.c             |  10 +
- pt.c                       | 476 ++++++++++++++++++
- pt.h                       |  35 ++
- pt/Makefile.objs           |   2 +
- pt/asm_decoder.c           | 226 +++++++++
- pt/asm_decoder.h           |  32 ++
- pt/cfg.h                   |  80 +++
- pt/debug.h                 |  36 ++
- pt/decoder.c               | 738 ++++++++++++++++++++++++++++
- pt/decoder.h               |  98 ++++
- pt/disassembler.c          | 762 +++++++++++++++++++++++++++++
- pt/disassembler.h          |  96 ++++
- pt/file_helper.c           | 137 ++++++
- pt/file_helper.h           |  31 ++
- pt/filter.c                | 109 +++++
- pt/filter.h                |  51 ++
- pt/hypercall.c             | 626 ++++++++++++++++++++++++
- pt/hypercall.h             | 153 ++++++
- pt/interface.c             | 408 ++++++++++++++++
- pt/interface.h             |  70 +++
- pt/khash.h                 | 607 +++++++++++++++++++++++
- pt/logger.c                | 106 ++++
- pt/logger.h                |  57 +++
- pt/memory_access.c         | 289 +++++++++++
- pt/memory_access.h         |  60 +++
- pt/meson.build             |   0
- pt/patcher.c               | 192 ++++++++
- pt/patcher.h               |  54 ++
- pt/printk.c                | 113 +++++
- pt/printk.h                |  17 +
- pt/redqueen.c              | 905 ++++++++++++++++++++++++++++++++++
- pt/redqueen.h              | 122 +++++
- pt/redqueen_patch.c        |  49 ++
- pt/redqueen_patch.h        |  20 +
- pt/synchronization.c       | 110 +++++
- pt/synchronization.h       |  19 +
- pt/tmp.objs                |   2 +
- pt/tnt_cache.c             |  82 ++++
- pt/tnt_cache.h             |  49 ++
- scripts/qemu-version.sh    |   2 +-
- softmmu/hmp-commands-pt.h  |  70 +++
- softmmu/runstate.c         |  71 +++
- softmmu/vl.c               |   7 +
- util/log.c                 |   2 +
- 64 files changed, 13323 insertions(+), 5 deletions(-)
+ accel/kvm/kvm-all.c       | 129 ++++++
+ configure                 |  13 +-
+ hmp-commands-pt.hx        |  76 ++++
+ hmp-commands.hx           |  11 +
+ include/hw/core/cpu.h     |  42 ++
+ include/monitor/hmp.h     |  11 +-
+ include/qemu/log.h        |   1 +
+ linux-headers/linux/kvm.h |  69 +++
+ meson.build               |  20 +-
+ monitor/hmp-cmds.c        | 183 ++++++++
+ monitor/misc.c            |  10 +
+ pt.c                      | 476 ++++++++++++++++++++
+ pt.h                      |  35 ++
+ pt/Makefile.objs          |   2 +
+ pt/asm_decoder.c          | 226 ++++++++++
+ pt/asm_decoder.h          |  32 ++
+ pt/cfg.h                  |  80 ++++
+ pt/debug.h                |  36 ++
+ pt/decoder.c              | 738 +++++++++++++++++++++++++++++++
+ pt/decoder.h              |  98 +++++
+ pt/disassembler.c         | 762 ++++++++++++++++++++++++++++++++
+ pt/disassembler.h         |  96 ++++
+ pt/file_helper.c          | 137 ++++++
+ pt/file_helper.h          |  31 ++
+ pt/filter.c               | 109 +++++
+ pt/filter.h               |  51 +++
+ pt/hypercall.c            | 626 ++++++++++++++++++++++++++
+ pt/hypercall.h            | 153 +++++++
+ pt/interface.c            | 408 +++++++++++++++++
+ pt/interface.h            |  70 +++
+ pt/khash.h                | 607 +++++++++++++++++++++++++
+ pt/logger.c               | 106 +++++
+ pt/logger.h               |  57 +++
+ pt/memory_access.c        | 289 ++++++++++++
+ pt/memory_access.h        |  60 +++
+ pt/meson.build            |   0
+ pt/patcher.c              | 192 ++++++++
+ pt/patcher.h              |  54 +++
+ pt/printk.c               | 113 +++++
+ pt/printk.h               |  17 +
+ pt/redqueen.c             | 905 ++++++++++++++++++++++++++++++++++++++
+ pt/redqueen.h             | 122 +++++
+ pt/redqueen_patch.c       |  49 +++
+ pt/redqueen_patch.h       |  20 +
+ pt/synchronization.c      | 110 +++++
+ pt/synchronization.h      |  19 +
+ pt/tmp.objs               |   2 +
+ pt/tnt_cache.c            |  82 ++++
+ pt/tnt_cache.h            |  49 +++
+ scripts/qemu-version.sh   |   2 +-
+ softmmu/hmp-commands-pt.h |  70 +++
+ softmmu/runstate.c        |  71 +++
+ softmmu/vl.c              |   7 +
+ util/log.c                |   2 +
+ 54 files changed, 7731 insertions(+), 5 deletions(-)
  create mode 100644 hmp-commands-pt.hx
  create mode 100644 pt.c
  create mode 100644 pt.h
@@ -909,6 +909,7 @@ index 000000000..f7b1340b2
 +#include "pt/memory_access.h"
 +#include "pt/interface.h"
 +#include "pt/debug.h"
++#include <libexplain/ioctl.h>
 +
 +#ifdef CONFIG_REDQUEEN
 +#include "pt/redqueen.h"
@@ -1676,7 +1677,6 @@ index 000000000..58ec2cdaf
 +void asm_decoder_clear(asm_operand_t* op);
 +
 +bool asm_decoder_op_eql(asm_operand_t* op1, asm_operand_t* op2);
-
 diff --git a/pt/cfg.h b/pt/cfg.h
 new file mode 100644
 index 000000000..f7539a9a7
@@ -3879,7 +3879,7 @@ index 000000000..287f46165
 +#endif
 diff --git a/pt/hypercall.c b/pt/hypercall.c
 new file mode 100644
-index 000000000..9c49fa05a
+index 000000000..b6e0ece45
 --- /dev/null
 +++ b/pt/hypercall.c
 @@ -0,0 +1,626 @@
@@ -8123,7 +8123,7 @@ index 000000000..38214c811
 +
 +#endif
 diff --git a/scripts/qemu-version.sh b/scripts/qemu-version.sh
-index 3f6e7e6d4..4cc06d1af 100755
+index 3f6e7e6d4..20a375c7a 100755
 --- a/scripts/qemu-version.sh
 +++ b/scripts/qemu-version.sh
 @@ -9,7 +9,7 @@ version="$3"

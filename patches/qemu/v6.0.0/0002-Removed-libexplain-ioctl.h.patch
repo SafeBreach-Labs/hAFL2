@@ -1,7 +1,7 @@
-From 06a3fd25cbe5533be6c9a16562884ff2f0b36d6b Mon Sep 17 00:00:00 2001
+From 1e311b11b41cfb20faded05e0da14bab560265aa Mon Sep 17 00:00:00 2001
 From: Peleg Hadar <peleg.hadar.w@gmail.com>
 Date: Sun, 25 Jul 2021 18:16:54 +0200
-Subject: [PATCH] Removed libexplain/ioctl.h
+Subject: [PATCH 2/2] Removed libexplain/ioctl.h
 
 ---
  pt.c | 1 -
