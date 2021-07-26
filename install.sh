@@ -83,7 +83,8 @@ system_deps()
 	echo "[*] Installing essentials tools ..."
 	sudo apt-get install git make gcc bc libssl-dev pax-utils libelf-dev \
 		libgraphviz-dev gnuplot ruby libgtk-3-dev libc6-dev flex bison \
-		python3 python3-pip python3-all-dev python3-setuptools python3-wheel -y
+		python3 python3-pip python3-all-dev python3-setuptools python3-wheel \
+		ninja-build ntfs-3g gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 -y
 
 	echo "[*] Installing hAFL2 python dependencies ..."
 	pip3 install --user mmh3 lz4 psutil fastrand ipdb inotify msgpack toposort pygraphviz pgrep tqdm six python-dateutil
@@ -151,6 +152,7 @@ build_linux()
 	else
 		checked_download "linux-${LINUX_VERSION}.tar.xz" "$LINUX_URL"
 		tar xf "linux-${LINUX_VERSION}.tar.xz" || exit
+		mv compile-kvm.sh linux-${LINUX_VERSION}/
 		pushd "linux-${LINUX_VERSION}" || exit
 		git init
 		git add .
@@ -218,7 +220,7 @@ print_help()
 	echo " qemu    - download and build modified qemu"
 	echo " linux   - download and build modified linux kernel"
 	echo " perms   - create kvm group and add user <$USER> for /dev/kvm access"
-	echo " radamsa - download and build radamsa plugin"
+	echo " targets   - build user-mode harness targets binaries"
 	echo
 	echo " all     - perform all of the above."
 	echo

@@ -10,18 +10,33 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
 
 1. Clone this repository.
 2. Enter the hAFL2 directory.
-3. Execute `sudo bash install.sh all`
+3. Execute the following commands by the following order:  
+    - `sudo bash install.sh check`
+    - `sudo bash install.sh deps`
+    - `sudo bash install.sh qemu`
+    - `sudo bash install.sh linux`
+    - `sudo bash install.sh perms`
+    - `sudo bash install.sh targets`
+4. Once you're done and everything finished sucessfully, execute the following command and follow the instructions in order to install the modified Linux kernel:  
+    - `sudo bash install.sh note`
+
+
+# Notes
+1. During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
+2. Whenever you'll execute `qemu-system-x86_64` you'll see the following warning, just ignore it, everything is fine:  
+`qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.intel-pt [bit 25]`
+3. During the tutorial I've used `/root` in some of the paths for convinient, you may use another path but I haven't tested it.
+4. Make sure to run all of the commands as a root user.
+5. There might be an issue with QEMU and Rocket Lake (Intel 11th Gen) CPUs, I haven't tested it.
 
 # Creating a Root Partition VM
-
-*Note: During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
-
+   0. Execute `uname -r` and make sure the output contains `hAFL2`.  
    1. [Obtain a Windows 10 Insider ISO file](https://www.microsoft.com/en-us/software-download/windowsinsiderpreviewiso) (21354.1000), we'll be using Windows10_InsiderPreview_Client_x64_en-us_21354.iso (Select `"Windows 10 Insider Preview (Dev Channel) - Build 21354" Edition`).  
       - You may need to register to Windows Insider Program.
    2. Create a QEMU disk image:
     `./hAFL2/qemu-6.0.0/build/qemu-img create -f qcow2 windows.qcow2 100G`
-   3. Run the machine and install Windows:
-    `./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m 16384 -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -cdrom ./Windows10_InsiderPreview_Client_x64-en-us_21354.iso -net none -usbdevice tablet`
+3. Run the machine and install Windows, replace `ISO_FILE_PATH` with the Windows ISO path you've downloaded, replace 6144 (6GB) with the required RAM size, I recommend to use 6144 if it's feasible:  
+    `./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m RAM_SIZE -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -cdrom ISO_FILE_PATH -net none -usbdevice tablet`
    4. Install Windows 10 Pro, which has Hyper-V capabilities.
    5. Consider do the following:
        - [Disable Windows Defender permanently using local group policy](https://www.windowscentral.com/how-permanently-disable-windows-defender-antivirus-windows-10).
@@ -42,12 +57,13 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
 ./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m 16384 -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -net none -usbdevice tablet
 ```  
   
-3. From within the Root Partition VM, create a Child Partition VM by using Hyper-V VM creation wizard
+3. From within the Root Partition VM, create a Child Partition VM by using Hyper-V VM creation wizard (2048MB RAM is probably enough):  
     - Make sure to choose "Generation 2 VM"  
+    - Set HDD to less than 50GB  
     - Choose the Windows 10 ISO (VM Settings → DVD Drive → Image File)(`Windows10_InsiderPreview_Client_x64-en-us_21354.iso`)  
+    - Connect the Child Partition VM to a virtual network switch
     - **Install Windows 10** (21354.1000) on the newly created VM.  
         **Note:** You don't have to use version 21354.1000 for the child partition VM, but it will be easier as the `CPHarness` driver supports this version out-of-the-box. If you'd like to use another Windows 10 version, check out the following paragraph.
-
 ### Optional: Using A Custom Windows 10 build for the Child Partition VM (instead of 21354.1000)
 
 The `CPHarness` driver enumerates the NDIS global miniport adapter list of Windows in order to retrieve the VMBus channel pointer of netvsc and use it in order to send packets to the root partition. The offset of this global list is changed between Windows builds, so if you'll use a different version of Windows, make sure to do the following:
@@ -88,8 +104,8 @@ You need to compile both the harness and the crash monitoring driver from the hA
 
 # **Optimizing the Crash Monitoring and Disabling DSE for Root Partition VM**
 1. Execute the Root Partition VM:  
-`./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -enable-kvm -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -usbdevice tablet -m 16384 -bios /root/hAFL1/OVMF_CODE-pure-efi.fd -drive file=windows.qcow2 -machine q35 -net none`  
-2. In order to make the crash monitoring functionality operate faster, open PowerShell (within the root partition VM) as an Administrator and execute the following command:  
+`./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -enable-kvm -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -usbdevice tablet -m 16384 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -drive file=windows.qcow2 -machine q35 -net none`  
+1. In order to make the crash monitoring functionality operate faster, open PowerShell (within the root partition VM) as an Administrator and execute the following command:  
 `Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl" -Name "CrashDumpEnabled" -Value 0`  
 3. Disable Driver Signature Enforcement from within an elevated command prompt (Restart the root partition VM once you're done):
 `bcdedit /set testsigning on &&`  
@@ -133,7 +149,7 @@ Once you've copied the listed files to the Root Partition VM, copy the following
 
 1. Run the VM overlay:
 
-`./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -enable-kvm -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -usbdevice tablet -m 16384 -bios /root/hAFL1/OVMF_CODE-pure-efi.fd -drive file=overlay_0.qcow2 -machine q35` 
+`./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -enable-kvm -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -usbdevice tablet -m 16384 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -drive file=overlay_0.qcow2 -machine q35` 
 
 ### Retrieving VMSwitch.sys address range (Root Partition VM)
 
