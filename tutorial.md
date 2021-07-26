@@ -22,8 +22,9 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
 
 
 # Notes
-1. During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
-2. Whenever you'll execute `qemu-system-x86_64` you'll see the following warning, just ignore it, everything is fine:  
+1. hAFL2 was tested only on Ubuntu 20.04
+2. During the installation, whenever Windows tries to restart, QEMU might hang with a black screen. If that is the case, quit QEMU (Ctrl+C) and re-run the VM.*
+3. Whenever you'll execute `qemu-system-x86_64` you'll see the following warning, just ignore it, everything is fine:  
 `qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.intel-pt [bit 25]`
 3. During the tutorial I've used `/root` in some of the paths for convinient, you may use another path but I haven't tested it.
 4. Make sure to run all of the commands as a root user.
