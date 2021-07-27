@@ -96,7 +96,8 @@ Note: *Make sure the child partition VM is turned off.*
 # Compile Necessary Binaries
 You need to compile both the harness and the crash monitoring driver from the hAFL2 codebase. We will be using two of them - packet_sender.exe (the program which triggers the packet-sending IOCTL) and loader.exe (which creates a fuzzing snapshot, loads and executes packet_sender.exe).
 
-1. Compile hAFL2’s fuzzing binaries by executing bash ./hAFL2/targets/windows_86_64/compile.sh.  
+1. Compile hAFL2’s fuzzing binaries by executing the following within bash:  
+ `pushd ./hAFL2/targets/windows_x86_64 && ./compile.sh && popd`  
 2. Use Visual Studio to compile both drivers from within the `hAFL2\drivers` folder:
     - **CPHarness** (`Child Partition Harness`) - this driver will be installed within the child partition VM, and will send packets of fuzzing payloads to the root partition's VMSwitch.  
     - **CrashMonitoring** - this driver will send root partition crashes to hAFL2 by using an hypercall interface.  
