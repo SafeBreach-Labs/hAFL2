@@ -90,7 +90,7 @@ Note: *Make sure the child partition VM is turned off.*
     2. Run the following command from within PowerShell:
     `(Get-NetAdapter)[0].InterfaceDescription`  
     3. Modify the `ourName` variable within the CPHarness driver to the output of the previous command, for example, if the output was `Microsoft Hyper-V Network Adapter`, assign the variable with:  
-        `UNICODE_STRING ourName = RTL_CONSTANT_STRING(L"Microsoft Hyper-V Network Adapter #2");`  
+        `UNICODE_STRING ourName = RTL_CONSTANT_STRING(L"Microsoft Hyper-V Network Adapter");`  
     4. Disable Child Partition DSE by running the following from within an elevated command prompt (restart the child partition VM after you're done):
     `bcdedit /set testsigning on &&`  
     `bcdedit /set nointegritychecks on &&`  
