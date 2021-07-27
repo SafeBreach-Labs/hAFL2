@@ -91,10 +91,8 @@ Note: *Make sure the child partition VM is turned off.*
     `(Get-NetAdapter)[0].InterfaceDescription`  
     3. Modify the `ourName` variable within the CPHarness driver to the output of the previous command, for example, if the output was `Microsoft Hyper-V Network Adapter`, assign the variable with:  
         `UNICODE_STRING ourName = RTL_CONSTANT_STRING(L"Microsoft Hyper-V Network Adapter");`  
-    4. Disable Child Partition DSE by running the following from within an elevated command prompt (restart the child partition VM after you're done):
-    `bcdedit /set testsigning on &&`  
-    `bcdedit /set nointegritychecks on &&`  
-    `bcdedit -set loadoptions DDISABLE_INTEGRITY_CHECKS`  
+    4. Disable Child Partition DSE by running the following from within an elevated command prompt (restart the child partition VM after you're done):  
+    `bcdedit /set testsigning on && bcdedit /set nointegritychecks on && bcdedit -set loadoptions DDISABLE_INTEGRITY_CHECKS`  
 # Compile Necessary Binaries
 You need to compile both the harness and the crash monitoring driver from the hAFL2 codebase. We will be using two of them - packet_sender.exe (the program which triggers the packet-sending IOCTL) and loader.exe (which creates a fuzzing snapshot, loads and executes packet_sender.exe).
 
