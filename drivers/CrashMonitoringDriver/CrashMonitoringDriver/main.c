@@ -1,3 +1,5 @@
+#define _NO_CRT_STDIO_INLINE
+
 #include <ntddk.h>
 #include <aux_klib.h>
 #include <Wdm.h>
