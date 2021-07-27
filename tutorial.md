@@ -37,7 +37,7 @@ This phase will build Linux, KVM-PT and QEMU-PT on your Linux machine.
    2. Create a QEMU disk image:
     `./hAFL2/qemu-6.0.0/build/qemu-img create -f qcow2 windows.qcow2 100G`
 3. Run the machine and install Windows, replace `ISO_FILE_PATH` with the Windows ISO path you've downloaded, replace 6144 (6GB) with the required RAM size, I recommend to use 6144 if it's feasible:  
-    `./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m RAM_SIZE -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -cdrom ISO_FILE_PATH -net none -usbdevice tablet`
+    `./hAFL2/qemu-6.0.0/build/x86_64-softmmu/qemu-system-x86_64 -cpu host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+intel-pt,-hypervisor,+vmx -machine q35 -enable-kvm -m RAM_SIZE -hda ./windows.qcow2 -bios /root/hAFL2/OVMF_CODE-pure-efi.fd -cdrom ISO_FILE_PATH -net none -usbdevice tablet`  
    4. Install Windows 10 Pro, which has Hyper-V capabilities.
    5. Consider do the following:
        - [Disable Windows Defender permanently using local group policy](https://www.windowscentral.com/how-permanently-disable-windows-defender-antivirus-windows-10).
