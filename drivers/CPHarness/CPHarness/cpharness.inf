@@ -4,8 +4,8 @@
 
 [Version]
 Signature="$WINDOWS NT$"
-Class=Sample ; TODO: edit Class
-ClassGuid={78A1C341-4539-11d3-B88D-00C04FAD5171} ; TODO: edit ClassGuid
+Class=Harness ; TODO: edit Class
+ClassGuid={69015c15-6232-4062-a478-560c07bd4227} ; TODO: edit ClassGuid
 Provider=%ManufacturerName%
 CatalogFile=CPHarness.cat
 DriverVer= ; TODO: set DriverVer in stampinf property pages
