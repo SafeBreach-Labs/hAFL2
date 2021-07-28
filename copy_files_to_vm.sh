@@ -10,7 +10,7 @@ sudo modprobe nbd &&
 sudo qemu-6.0.0/build/qemu-nbd --connect=/dev/nbd0 $2 && 
 sleep 1 && 
 sudo mount -o rw /dev/nbd0p3 ./mnt && 
-cp $1/* ./mnt && 
+cp -r $1/* ./mnt && 
 umount ./mnt && 
 sudo qemu-6.0.0/build/qemu-nbd --disconnect /dev/nbd0 && 
 rm -rf ./mnt
