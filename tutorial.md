@@ -98,9 +98,15 @@ You need to compile both the harness and the crash monitoring driver from the hA
 
 1. Compile hAFL2’s fuzzing binaries by executing the following within bash:  
  `pushd ./hAFL2/targets/windows_x86_64 && ./compile.sh && popd`  
-2. Use Visual Studio to compile both drivers from within the `hAFL2\drivers` folder:
+2. Use Visual Studio to compile both drivers from within the `hAFL2\drivers` folder.  
     - **CPHarness** (`Child Partition Harness`) - this driver will be installed within the child partition VM, and will send packets of fuzzing payloads to the root partition's VMSwitch.  
     - **CrashMonitoring** - this driver will send root partition crashes to hAFL2 by using an hypercall interface.  
+  - **Within VS**:
+     * right click on each project -> Properties -> Driver Signing -> General  
+     * Change "Sign Mode" to "Test Sign"  
+     * Set "File Digest Algorithm" to "SHA1"
+     * Then compile.
+
 
 # **Optimizing the Crash Monitoring and Disabling DSE for Root Partition VM**
 1. Execute the Root Partition VM:  
