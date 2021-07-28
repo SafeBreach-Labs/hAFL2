@@ -1,0 +1,24 @@
+From e8747cf1c841a49e9c5fdae4bceaa89061dc2077 Mon Sep 17 00:00:00 2001
+From: Peleg Hadar <peleg.hadar.w@gmail.com>
+Date: Wed, 28 Jul 2021 16:42:39 +0200
+Subject: [PATCH] Removed SHUTDOWN when info hypercall is called
+
+---
+ pt/hypercall.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/pt/hypercall.c b/pt/hypercall.c
+index b6e0ece45..af14b69a7 100644
+--- a/pt/hypercall.c
++++ b/pt/hypercall.c
+@@ -429,7 +429,6 @@ void handle_hypercall_kafl_info(struct kvm_run *run, CPUState *cpu){
+ 	if(hypercall_enabled){
+ 		hypercall_snd_char(KAFL_PROTO_INFO);
+ 	}
+-	qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_SIGNAL);
+ }
+ 
+ void handle_hypercall_kafl_crash_dump_size(struct kvm_run *run, CPUState *cpu){
+-- 
+2.25.1
+
